@@ -1,5 +1,9 @@
 class_name IRCClient extends Node
 
+## emitted by when the client receives a message type it recognizes, with the message parameters stored in an array
+signal message_received(client:IRCClient, msg_type:String, data: Array[String])
+
+## emitted when the client receives a message from the server it doesn't recognize/understand
 signal unhandled_message_received(client:IRCClient, msg:String)
 
 ## disconnected is emitted when the client disconnects from the server
@@ -96,18 +100,26 @@ func _check_incoming():
 	if next_line != null:
 		_process_line(next_line)
 
-
 	if available_bytes < 1:
 		# incoming bytes
 		return
 
-	# _incoming_buffer += _client.get_utf8_string(available_bytes).trim_suffix("\r\n")
 	_incoming_lines.append_array(_client.get_utf8_string(available_bytes).split("\r\n", false))
 
-	
-	# print("<- %d: %s" % [available_bytes, incoming])
-
 func _process_line(line: String):
+	if line == "":
+		return
+	var payload := ""
+	var parts := line.split(" ", true, 3)
+	if line.find(IRCMessageTypes.PING_MESSAGE) == 0:
+		parts.remove_at(0)
+		send_line("PONG " + " ".join(parts))
+		message_received.emit(self, IRCMessageTypes.PING_MESSAGE, [payload])
+		return
+
+	var line_noprefix = line.substr(1) if line.find(":") == 0 else line
+	
+	
 	unhandled_message_received.emit(self, line)
 
 ## Sends multiple messages to the server sequentially, each terminated by CRLF and limited to 512 bytes

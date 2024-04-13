@@ -1,5 +1,6 @@
-extends Node
+class_name IRCClientManager extends Node
 
+signal client_connected(client: IRCClient)
 signal unhandled_message_received(client:IRCClient, msg:String)
 
 var profile := IRCProfile.new()
@@ -20,6 +21,7 @@ func _ready():
 	var err := await client.start_connection()
 	assert(err == "")
 	add_child(client)
+	client_connected.emit(client)
 	client.name = client.host
 
 
@@ -40,4 +42,4 @@ func _process(delta:float):
 	pass
 
 func _on_unhandled_message(client:IRCClient, msg: String):
-	print("<- %s: %s" % [client.host, msg])
+	unhandled_message_received.emit(client, msg)
