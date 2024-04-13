@@ -28,7 +28,7 @@ func disconnect_clients():
 	for child in children:
 		var client = child as IRCClient
 		client.end_connection()
-		client.disconnect("unhandled_message_received", _on_unhandled_message)
+		client.unhandled_message_received.disconnect(_on_unhandled_message)
 
 func _notification(what:int):
 	match what:
@@ -40,4 +40,4 @@ func _process(delta:float):
 	pass
 
 func _on_unhandled_message(client:IRCClient, msg: String):
-	print("unhandled from %s: %s" % [client.host, msg])
+	print("<- %s: %s" % [client.host, msg])

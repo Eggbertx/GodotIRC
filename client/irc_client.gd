@@ -1,6 +1,6 @@
 class_name IRCClient extends Node
 
-signal unhandled_message_received(msg:String)
+signal unhandled_message_received(client:IRCClient, msg:String)
 
 ## disconnected is emitted when the client disconnects from the server
 signal disconnected()
@@ -108,7 +108,7 @@ func _check_incoming():
 	# print("<- %d: %s" % [available_bytes, incoming])
 
 func _process_line(line: String):
-	unhandled_message_received.emit(line)
+	unhandled_message_received.emit(self, line)
 
 ## Sends multiple messages to the server sequentially, each terminated by CRLF and limited to 512 bytes
 func send_lines(lines: Array[String]) -> int:
