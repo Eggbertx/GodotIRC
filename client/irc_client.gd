@@ -9,6 +9,8 @@ signal unhandled_message_received(client:IRCClient, msg:String)
 ## emitted for all incoming messages
 signal raw_message_received(client:IRCClient, data:String)
 
+signal server_message_received(client:IRCClient, msg_type:String, msg:String)
+
 ## disconnected is emitted when the client disconnects from the server
 signal disconnected()
 
@@ -17,6 +19,7 @@ enum {
 	STATE_FAILURE,
 	STATE_CONNECTED,
 	STATE_CONNECTION_REGISTERED,
+	STATE_CONNECTED_MOTD_DONE,
 	STATE_JOINED
 }
 
@@ -121,10 +124,18 @@ func _process_line(line: String):
 		message_received.emit(self, IRCMessageTypes.PING_MESSAGE, [payload])
 		return
 
-	var line_noprefix = line.substr(1) if line.find(":") == 0 else line
-	
-	
-	unhandled_message_received.emit(self, line)
+	var msg_from := parts[0]
+	var msg_type := parts[1]
+	var msg_to := parts[2]
+	var msg_data := parts[3]
+
+	match msg_type:
+		IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
+			server_message_received.emit(self, msg_type, msg_data)
+		IRCMessageTypes.RPL_ENDOFMOTD:
+			pass
+		_:
+			unhandled_message_received.emit(self, line)
 
 ## Sends multiple messages to the server sequentially, each terminated by CRLF and limited to 512 bytes
 func send_lines(lines: Array[String]) -> int:
