@@ -39,7 +39,7 @@ func disconnect_clients():
 		client.server_message_received.disconnect(_on_server_message_received)
 		client.unhandled_message_received.disconnect(_on_unhandled_message)
 
-func get_server_conn(server: String):
+func get_server_conn(server: String) -> IRCClient:
 	var children := get_children()
 	for child in children:
 		var client = child as IRCClient

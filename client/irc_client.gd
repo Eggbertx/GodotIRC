@@ -140,7 +140,7 @@ func _process_line(line: String):
 	var msg_from := parts[0]
 	var msg_type := parts[1]
 	var msg_to := parts[2]
-	var msg_data := parts[3].substr(1) if parts[3].begins_with(":") else parts[3]
+	var msg_data := parts[2].substr(1) if parts[2].begins_with(":") else parts[3]
 
 	match msg_type:
 		IRCMessageTypes.NOTICE_MESSAGE, IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
