@@ -2,6 +2,7 @@ class_name IRCClientManager extends Node
 
 signal client_connected(client: IRCClient)
 signal unhandled_message_received(client:IRCClient, msg:String)
+signal raw_message_received(client:IRCClient, data:String)
 
 var profile := IRCProfile.new()
 
@@ -17,6 +18,7 @@ func _ready():
 	client_opts.channels.append("#codefest")
 
 	var client := IRCClient.new(client_opts, profile)
+	client.raw_message_received.connect(_on_raw_message_received)
 	client.unhandled_message_received.connect(_on_unhandled_message)
 	var err := await client.start_connection()
 	assert(err == "")
@@ -30,6 +32,7 @@ func disconnect_clients():
 	for child in children:
 		var client = child as IRCClient
 		client.end_connection()
+		client.raw_message_received.disconnect(_on_raw_message_received)
 		client.unhandled_message_received.disconnect(_on_unhandled_message)
 
 func _notification(what:int):
@@ -40,6 +43,9 @@ func _notification(what:int):
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta:float):
 	pass
+
+func _on_raw_message_received(client:IRCClient, data:String):
+	raw_message_received.emit(client, data)
 
 func _on_unhandled_message(client:IRCClient, msg: String):
 	unhandled_message_received.emit(client, msg)

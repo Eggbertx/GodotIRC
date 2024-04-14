@@ -6,6 +6,9 @@ signal message_received(client:IRCClient, msg_type:String, data: Array[String])
 ## emitted when the client receives a message from the server it doesn't recognize/understand
 signal unhandled_message_received(client:IRCClient, msg:String)
 
+## emitted for all incoming messages
+signal raw_message_received(client:IRCClient, data:String)
+
 ## disconnected is emitted when the client disconnects from the server
 signal disconnected()
 
@@ -109,6 +112,7 @@ func _check_incoming():
 func _process_line(line: String):
 	if line == "":
 		return
+	raw_message_received.emit(self, line)
 	var payload := ""
 	var parts := line.split(" ", true, 3)
 	if line.find(IRCMessageTypes.PING_MESSAGE) == 0:
@@ -141,7 +145,6 @@ func send_line(line: String) -> int:
 	# max size of a message is 512, as defined by RFC 1459
 	if line.length() > 510:
 		line = line.substr(0, 510)
-	print("-> %d: %s" % [line.length()+2, line])
 	line += "\r\n"
 	return _client.put_data(line.to_utf8_buffer())
 
