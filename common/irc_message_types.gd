@@ -6,6 +6,8 @@ const PING_MESSAGE = "PING"
 
 const PONG_MESSAGE = "PONG"
 
+const PRIVMSG_MESSAGE = "PRIVMSG"
+
 const RPL_WELCOME = "001"
 
 const RPL_YOURHOST = "002"

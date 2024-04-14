@@ -4,6 +4,7 @@ signal client_connected(client: IRCClient)
 signal unhandled_message_received(client:IRCClient, msg:String)
 signal raw_message_received(client:IRCClient, data:String)
 signal server_message_received(client:IRCClient, msg_type:String, motd_msg:String)
+signal channel_joined(server:String, channel:String)
 
 var profile := IRCProfile.new()
 
@@ -37,6 +38,25 @@ func disconnect_clients():
 		client.raw_message_received.disconnect(_on_raw_message_received)
 		client.server_message_received.disconnect(_on_server_message_received)
 		client.unhandled_message_received.disconnect(_on_unhandled_message)
+
+func get_server_conn(server: String):
+	var children := get_children()
+	for child in children:
+		var client = child as IRCClient
+		if client.host == server:
+			return client
+	return null
+
+func join_channel(server: String, channel: String):
+	var client = get_server_conn(server)
+	if client == null:
+		print("Couldn't find server %s in scene tree" % server)
+		return
+	
+	await client.join_channel(channel)
+	channel_joined.emit(server, channel)
+	
+
 
 func _notification(what:int):
 	match what:

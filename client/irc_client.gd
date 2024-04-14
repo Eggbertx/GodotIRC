@@ -11,6 +11,8 @@ signal raw_message_received(client:IRCClient, data:String)
 
 signal server_message_received(client:IRCClient, msg_type:String, msg:String)
 
+signal privmsg_received(client: IRCClient, channel:String, msg:String)
+
 ## disconnected is emitted when the client disconnects from the server
 signal disconnected()
 
@@ -22,6 +24,10 @@ enum {
 	STATE_CONNECTED_MOTD_DONE,
 	STATE_JOINED
 }
+
+var gdirc_version: String:
+	get:
+		return "GodotIRC 0.1/Godot 4.2" # TODO
 
 var _opts:IRCOptions = null
 var _profile:IRCProfile = null
@@ -99,6 +105,13 @@ func _process(delta:float):
 	if is_connection_started():
 		_check_incoming()
 
+func join_channel(channel: String):
+	if not channel.begins_with("#"):
+		channel = "#" + channel
+	send_line("JOIN %s" % channel)
+
+func send_privmsg(channel: String, msg: String):
+	pass
 
 func _check_incoming():
 	var available_bytes := _client.get_available_bytes()
@@ -127,13 +140,19 @@ func _process_line(line: String):
 	var msg_from := parts[0]
 	var msg_type := parts[1]
 	var msg_to := parts[2]
-	var msg_data := parts[3]
+	var msg_data := parts[3].substr(1) if parts[3].begins_with(":") else parts[3]
 
 	match msg_type:
-		IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
+		IRCMessageTypes.NOTICE_MESSAGE, IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
 			server_message_received.emit(self, msg_type, msg_data)
 		IRCMessageTypes.RPL_ENDOFMOTD:
 			pass
+		IRCMessageTypes.PRIVMSG_MESSAGE:
+			if msg_data == "\u0001VERSION\u0001":
+				# CTCP version string
+				send_line("PRIVMSG %s :\u0001VERSION %s\u0001" % [msg_to, gdirc_version])
+			else:
+				privmsg_received.emit(self, msg_from, msg_data)
 		_:
 			unhandled_message_received.emit(self, line)
 
