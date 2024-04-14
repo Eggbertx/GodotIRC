@@ -5,6 +5,7 @@ signal unhandled_message_received(client:IRCClient, msg:String)
 signal raw_message_received(client:IRCClient, data:String)
 signal server_message_received(client:IRCClient, msg_type:String, motd_msg:String)
 signal channel_joined(server:String, channel:String)
+signal privmsg_received(client:IRCClient, channel:String, )
 
 var profile := IRCProfile.new()
 
@@ -55,7 +56,6 @@ func join_channel(server: String, channel: String):
 	
 	await client.join_channel(channel)
 	channel_joined.emit(server, channel)
-	
 
 
 func _notification(what:int):

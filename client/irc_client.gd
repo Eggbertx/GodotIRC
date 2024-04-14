@@ -110,9 +110,6 @@ func join_channel(channel: String):
 		channel = "#" + channel
 	send_line("JOIN %s" % channel)
 
-func send_privmsg(channel: String, msg: String):
-	pass
-
 func _check_incoming():
 	var available_bytes := _client.get_available_bytes()
 	var next_line := _incoming_lines.pop_front()
@@ -155,6 +152,10 @@ func _process_line(line: String):
 				privmsg_received.emit(self, msg_from, msg_data)
 		_:
 			unhandled_message_received.emit(self, line)
+
+
+func send_privmsg(channel:String, msg:String):
+	send_line("PRIVMSG %s :%s" % [channel, msg])
 
 ## Sends multiple messages to the server sequentially, each terminated by CRLF and limited to 512 bytes
 func send_lines(lines: Array[String]) -> int:
