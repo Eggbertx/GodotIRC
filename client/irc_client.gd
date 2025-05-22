@@ -25,12 +25,13 @@ enum {
 	STATE_JOINED
 }
 
+var engine_version:String = "Godot %s" % Engine.get_version_info().string.split(" ")[0]
+
 var gdirc_version: String:
 	get:
-		return "GodotIRC 0.1/Godot 4.2" # TODO
+		return "GodotIRC 0.1/%s" % engine_version
 
-var _opts:IRCOptions = null
-var _profile:IRCProfile = null
+var _opts:ServerOptions = null
 
 var connection_state = STATE_DISCONNECTED
 
@@ -58,21 +59,20 @@ var channels: Array[String]:
 
 var nick: String:
 	get:
-		return _profile.nick
+		return _opts.nick
 
 var username: String:
 	get:
-		return _profile.username
+		return _opts.username
 
 var real_name: String:
 	get:
-		return _profile.real_name
+		return _opts.real_name
 
 var _client = StreamPeerTCP.new()
 
-func _init(opts:IRCOptions, profile:IRCProfile):
+func _init(opts:ServerOptions):
 	_opts = opts
-	_profile = profile
 
 func is_connection_started() -> bool:
 	return _client.get_connected_host() != ""

@@ -7,7 +7,6 @@ signal server_message_received(client:IRCClient, msg_type:String, motd_msg:Strin
 signal channel_joined(server:String, channel:String)
 signal privmsg_received(client:IRCClient, channel:String, )
 
-var profile := IRCProfile.new()
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -28,8 +27,8 @@ func get_server_conn(server: String) -> IRCClient:
 			return client
 	return null
 
-func add_server(opts:IRCOptions, profile: IRCProfile) -> String:
-	var client := IRCClient.new(opts, profile)
+func add_server(opts:ServerOptions) -> String:
+	var client := IRCClient.new(opts)
 	_connect_client_signals(client)
 	var err := await client.start_connection()
 	if err != "":
