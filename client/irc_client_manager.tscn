@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://db3d7h4fu55tk"]
 
-[ext_resource type="Script" path="res://addons/GodotIRC/client/irc_client_manager.gd" id="1_yfxsq"]
+[ext_resource type="Script" uid="uid://dlpq5epwbg5iw" path="res://addons/GodotIRC/client/irc_client_manager.gd" id="1_yfxsq"]
 
 [node name="IRCClientManager" type="Node"]
 script = ExtResource("1_yfxsq")
