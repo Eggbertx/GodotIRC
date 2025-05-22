@@ -1,6 +1,7 @@
 class_name IRCClientManager extends Node
 
 signal client_connected(client: IRCClient)
+signal client_state_changed(client: IRCClient, state:int)
 signal unhandled_message_received(client:IRCClient, msg:String)
 signal raw_message_received(client:IRCClient, data:String)
 signal server_message_received(client:IRCClient, msg_type:String, motd_msg:String)
@@ -50,11 +51,13 @@ func join_channel(server: String, channel: String):
 func _connect_client_signals(client:IRCClient):
 	client.raw_message_received.connect(_on_raw_message_received)
 	client.server_message_received.connect(_on_server_message_received)
+	client.state_changed.connect(_on_client_state_changed)
 	client.unhandled_message_received.connect(_on_unhandled_message)
 
 func _disconnect_client_signals(client:IRCClient):
 	client.raw_message_received.disconnect(_on_raw_message_received)
 	client.server_message_received.disconnect(_on_server_message_received)
+	client.state_changed.disconnect(_on_client_state_changed)
 	client.unhandled_message_received.disconnect(_on_unhandled_message)
 
 func _notification(what:int):
@@ -65,6 +68,9 @@ func _notification(what:int):
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta:float):
 	pass
+
+func _on_client_state_changed(client:IRCClient, state:int):
+	client_state_changed.emit(client, state)
 
 func _on_raw_message_received(client:IRCClient, data:String):
 	raw_message_received.emit(client, data)

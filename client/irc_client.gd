@@ -9,12 +9,17 @@ signal unhandled_message_received(client:IRCClient, msg:String)
 ## emitted for all incoming messages
 signal raw_message_received(client:IRCClient, data:String)
 
+## emitted when the client receives a message from the server
 signal server_message_received(client:IRCClient, msg_type:String, msg:String)
 
+## emitted when the client receives a PRIVMSG message (in a channel or private message)
 signal privmsg_received(client: IRCClient, channel:String, msg:String)
 
+## emitted when the client's connection state changes
+signal state_changed(client: IRCClient, state:int)
+
 ## disconnected is emitted when the client disconnects from the server
-signal disconnected()
+signal disconnected(client: IRCClient)
 
 enum {
 	STATE_DISCONNECTED,
@@ -25,15 +30,25 @@ enum {
 	STATE_JOINED
 }
 
-var engine_version:String = "Godot %s" % Engine.get_version_info().string.split(" ")[0]
+static var ENGINE_VERSION: String:
+	get():
+		return "Godot %s" % Engine.get_version_info().string.split(" ")[0]
 
-var gdirc_version: String:
-	get:
-		return "GodotIRC 0.1/%s" % engine_version
+static var VERSION_STRING: String:
+	get():
+		return "GodotIRC 0.2/%s" % ENGINE_VERSION
 
 var _opts:ServerOptions = null
 
-var connection_state = STATE_DISCONNECTED
+
+var _connection_state := STATE_DISCONNECTED
+
+var connection_state:
+	get:
+		return _connection_state
+	set(value):
+		_connection_state = value
+		state_changed.emit(self, value)
 
 var _incoming_lines: Array[String] = []
 
@@ -117,7 +132,7 @@ func _check_incoming():
 		_process_line(next_line)
 
 	if available_bytes < 1:
-		# incoming bytes
+		# no incoming bytes
 		return
 
 	_incoming_lines.append_array(_client.get_utf8_string(available_bytes).split("\r\n", false))
@@ -143,11 +158,12 @@ func _process_line(line: String):
 		IRCMessageTypes.NOTICE_MESSAGE, IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
 			server_message_received.emit(self, msg_type, msg_data)
 		IRCMessageTypes.RPL_ENDOFMOTD:
-			pass
+			connection_state = STATE_CONNECTED_MOTD_DONE
+			server_message_received.emit(self, msg_type, msg_data)
 		IRCMessageTypes.PRIVMSG_MESSAGE:
 			if msg_data == "\u0001VERSION\u0001":
 				# CTCP version string
-				send_line("PRIVMSG %s :\u0001VERSION %s\u0001" % [msg_to, gdirc_version])
+				send_line("PRIVMSG %s :\u0001VERSION %s\u0001" % [msg_to, VERSION_STRING])
 			else:
 				privmsg_received.emit(self, msg_from, msg_data)
 		_:
@@ -183,4 +199,5 @@ func end_connection():
 	if connection_state >= STATE_CONNECTION_REGISTERED:
 		send_line("QUIT")
 	_client.disconnect_from_host()
-	disconnected.emit()
+	connection_state = STATE_DISCONNECTED
+	disconnected.emit(self)
