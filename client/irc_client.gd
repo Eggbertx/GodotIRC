@@ -15,6 +15,13 @@ signal server_message_received(client:IRCClient, msg_type:String, msg:String)
 ## emitted when the client receives a PRIVMSG message (in a channel or private message)
 signal privmsg_received(client: IRCClient, channel:String, msg:String)
 
+## emitted when the client joins a channel
+signal channel_joined(client:IRCClient, channel:String)
+
+## emitted when the client receives a MODE message, which can be a channel mode or user mode.
+## If channel is empty, it is a user mode message.
+signal mode_message_received(client:IRCClient, channel:String, mode:String, params:Array[String])
+
 ## emitted when the client's connection state changes
 signal state_changed(client: IRCClient, state:int)
 
@@ -43,7 +50,8 @@ var _opts:ServerOptions = null
 
 var _connection_state := STATE_DISCONNECTED
 
-var connection_state:
+@export
+var connection_state:int:
 	get:
 		return _connection_state
 	set(value):
@@ -84,6 +92,8 @@ var real_name: String:
 	get:
 		return _opts.real_name
 
+var joined_channels: Array[String] = []
+
 var _client = StreamPeerTCP.new()
 
 func _init(opts:ServerOptions):
@@ -106,13 +116,18 @@ func start_connection() -> String:
 		status = _client.get_status()
 	connection_state = STATE_CONNECTED
 
-	success = await send_lines([
-		"PASS %s" % server_password,
+	var lines: Array[String] = [
 		"NICK %s" % nick,
 		("USER %s 8 *" % real_name) + ((" :%s" % real_name) if real_name != "" else "")
-	])
+	]
+
+	if server_password != "":
+		lines.insert(0, "PASS %s" % server_password)
+	
+	success = await send_lines(lines)
 	if success != OK:
 		return error_string(success)
+
 	connection_state = STATE_CONNECTION_REGISTERED
 	return ""
 
@@ -123,7 +138,7 @@ func _process(delta:float):
 func join_channel(channel: String):
 	if not channel.begins_with("#"):
 		channel = "#" + channel
-	send_line("JOIN %s" % channel)
+	await send_line("JOIN %s" % channel)
 
 func _check_incoming():
 	var available_bytes := _client.get_available_bytes()
@@ -155,11 +170,33 @@ func _process_line(line: String):
 	var msg_data := parts[2].substr(1) if parts[2].begins_with(":") else parts[3]
 
 	match msg_type:
-		IRCMessageTypes.NOTICE_MESSAGE, IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_MOTDSTART, IRCMessageTypes.RPL_MOTD:
+		IRCMessageTypes.NOTICE_MESSAGE, IRCMessageTypes.RPL_WELCOME, IRCMessageTypes.RPL_YOURHOST, \
+		IRCMessageTypes.RPL_CREATED, IRCMessageTypes.RPL_MYINFO, IRCMessageTypes.RPL_BOUNCE, IRCMessageTypes.RPL_LUSERCLIENT, \
+		IRCMessageTypes.RPL_LUSERCLIENT, IRCMessageTypes.RPL_LUSEROP, IRCMessageTypes.RPL_LUSERUNKNOWN, IRCMessageTypes.RPL_LUSERCHANNELS, \
+		IRCMessageTypes.RPL_LUSERME, IRCMessageTypes.RPL_LOCALUSERS, IRCMessageTypes.RPL_GLOBALUSERS, IRCMessageTypes.RPL_MOTDSTART, \
+		IRCMessageTypes.RPL_MOTD:
 			server_message_received.emit(self, msg_type, msg_data)
 		IRCMessageTypes.RPL_ENDOFMOTD:
 			connection_state = STATE_CONNECTED_MOTD_DONE
 			server_message_received.emit(self, msg_type, msg_data)
+		IRCMessageTypes.MODE_MESSAGE, IRCMessageTypes.RPL_CHANNELMODEIS:
+			var mode_parts := msg_data.split(" ", true)
+			var channel := ""
+			var mode := ""
+			var mode_params := []
+			if mode_parts.size() == 1:
+				mode = mode_parts[0]
+			elif mode_parts.size() == 2:
+				mode = mode_parts[0]
+				channel = mode_parts[1]
+			elif mode_parts.size() > 2:
+				channel = mode_parts[0]
+				mode = mode_parts[1]
+				mode_params = mode_parts.slice(2, mode_parts.size())
+			else:
+				print("invalid MODE message: %s" % line)
+				return
+			mode_message_received.emit(self, channel, mode, mode_params)
 		IRCMessageTypes.PRIVMSG_MESSAGE:
 			if msg_data == "\u0001VERSION\u0001":
 				# CTCP version string
